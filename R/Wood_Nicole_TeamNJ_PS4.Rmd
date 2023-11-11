@@ -1,0 +1,254 @@
+---
+title: "Problem Set #4"
+author: "Nicole Wood (Team NJ with Jade Jevandofsky and Jessika Viveros"
+date: "October 21, 2023"
+urlcolor: blue
+output: 
+  pdf_document:
+    df_print: tibble
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", highlight = TRUE)
+```
+
+
+In last week's problem set (Week 3, Question 5), you used `tidyverse` functions such as `filter()`, `arrange()`, and `select()` to perform data manipulations. In this problem set, you'll be asked to incorporate the use of pipes (`%>%`) into your code.
+
+You'll also be practicing variable creation in this problem set, using both `mutate()` in combination with `if_else()`, `case_when()`, and `recode()`.
+
+
+# Question 1: Data manipulation using pipes
+
+
+1. In the code chunk below, complete the following:
+
+    - Load the `tidyverse` library
+    - Use the `load()` and `url()` functions to download the `df_school_all` dataframe from the url: `https://github.com/anyone-can-cook/rclass1/raw/master/data/recruiting/recruit_school_allvars.RData`
+      - Each row in `df_school_all` represents a high school (includes both public and private)
+      - There are columns (e.g., `visit_by_100751`) indicating the number of times a university visited that high school
+      - The variable `total_visits` identifies the number of visits the high school received from all (16) public research universities in this data collection sample
+
+```{r}
+r = getOption("repos")
+r["CRAN"] = "http://cran.us.r-project.org"
+options(repos = r)
+rm(list = ls())
+install.packages("tidyverse")
+library(tidyverse)
+
+load(url("https://github.com/anyone-can-cook/rclass1/raw/master/data/recruiting/recruit_school_allvars.RData"))
+```
+
+2. Use the functions `arrange()`, `select()`, and `head()` to do the following:
+
+    - Sort `df_school_all` descending by `total_visits`
+    - Select the following variables: `name`, `state_code`, `city`, `school_type`, `total_visits`, `med_inc`, `pct_white`, `pct_black`, `pct_hispanic`, `pct_asian`, `pct_amerindian`
+    - Show the first 10 rows of the dataframe, which represents the top 10 most visited schools by the 16 universities
+    
+    Complete this in 2 ways: (1) without using pipes (the exact same way you did last week) and (2) using pipes (`%>%`) to complete this task using 1 line of code
+    
+__Without using pipes__:
+
+```{r}
+df_school_all_2 <- arrange(df_school_all, desc(total_visits))
+df_school_all_2 <- select(df_school_all_2, name, state_code, city, school_type, total_visits, med_inc, pct_white, pct_black, pct_hispanic, pct_asian, pct_amerindian)
+head(df_school_all_2, n = 10)
+```
+
+__Using pipes ('%>%')__:
+
+```{r}
+df_school_all_3 <- arrange(df_school_all, desc(total_visits)) %>% select(name, state_code, city, school_type, total_visits, med_inc, pct_white, pct_black, pct_hispanic, pct_asian, pct_amerindian)
+df_school_all_3 %>% head(n=10)
+```
+
+3. Building upon the previous question, use the functions `arrange()`, `select()`, `filter()`, and `head()` to do the following (select same variables as above):  
+
+    (A) Top 10 most visited public high schools in California
+    (B) Top 10 most visited private high schools in California
+    
+    Complete this in 2 ways: (1) without using pipes (the exact same way you did last week) and (2) using pipes (`%>%`) to complete the tasks using 1 line of code each
+
+__Without using pipes__:
+
+```{r}
+#Top 10 most visited public high schools in California
+
+df_school_all_public <- arrange(df_school_all, desc(total_visits))
+df_school_all_public <- select(df_school_all_public, name, state_code, city, school_type, total_visits, med_inc, pct_white, pct_black, pct_hispanic, pct_asian, pct_amerindian)
+df_school_all_public <- filter(df_school_all_public, school_type == "public", state_code == "CA")
+head(df_school_all_public, n = 10)
+
+#Top 10 most visited private high schools in California
+
+df_school_all_private <- arrange(df_school_all, desc(total_visits))
+df_school_all_private <- select(df_school_all_private, name, state_code, city, school_type, total_visits, med_inc, pct_white, pct_black, pct_hispanic, pct_asian, pct_amerindian)
+df_school_all_private <- filter(df_school_all_private, school_type == "private", state_code == "CA")
+head(df_school_all_private, n = 10)
+```
+
+__Using pipes ('%>%')__:
+
+```{r}
+#Top 10 most visited public high schools in California
+
+df_school_all_public2 <- arrange(df_school_all, desc(total_visits)) %>% select(name, state_code, city, school_type, total_visits, med_inc, pct_white, pct_black, pct_hispanic, pct_asian, pct_amerindian) %>% filter(school_type == "public", state_code == "CA")
+df_school_all_public2 %>% head(n=10)
+
+#Top 10 most visited private high schools in California
+
+df_school_all_private2 <- arrange(df_school_all, desc(total_visits)) %>% select(name, state_code, city, school_type, total_visits, med_inc, pct_white, pct_black, pct_hispanic, pct_asian, pct_amerindian) %>% filter(school_type == "private", state_code == "CA") 
+df_school_all_private2 %>% head(n=10)
+```
+
+
+# Question 2: Variable creation using `tidyverse`'s `mutate()`
+
+Often before creating new "analysis" variables, you may want to investigate the values of "input" variables. Here are some examples of checking variable values using `count()`:
+
+```{r eval=FALSE}
+# Counts the total number of observations (i.e., rows) in `df_school_all`
+df_school_all %>% count()
+
+# Counts the number of observations that have missing values for the variable `med_inc`
+df_school_all %>% filter(is.na(med_inc)) %>% count()
+
+# Frequency count of the variable `school_type`
+df_school_all %>% count(school_type)
+```
+
+
+
+1. Use `mutate()` with `if_else()` to create a 0/1 indicator and then use `count()` to generate the following frequency tables:
+
+    - Create 0/1 indicator called `ca_school` for whether the high school is in California and generate the frequency table for the values of `ca_school`
+    - Create 0/1 indicator called `ca_pub_school` for whether the high school is a public school in California and generate the frequency table for the values of `ca_pub_school`
+
+    Note: You do not need to assign/retain the indicator variables in the `df_school_all` dataframe.
+
+```{r}
+df_school_all %>% 
+  mutate(ca_school = if_else(state_code == "CA", 1, 0)) %>% 
+    count(ca_school)
+
+df_school_all %>%
+  mutate(ca_pub_school = if_else(state_code == "CA" & school_type == "public", 1, 0)) %>%
+    count(ca_pub_school)
+  
+```
+
+
+2. Complete the following steps to create an analysis variable using `mutate()` and `if_else()`:
+
+    - First, use `select()` to select the variables `name`, `pct_black`, `pct_hispanic`, `pct_amerindian` from `df_school_all`, and assign the resulting dataframe to `df_race`. You'll be using `df_race` for the remaining bullet points below.
+    - Use `filter()`, `is.na()`, and `count()` to investigate whether or not the following variables have missing values: `pct_black`, `pct_hispanic`, `pct_amerindian`
+    - Use `mutate()` to create a new variable `pct_bl_hisp_nat` in `df_race` that is the sum of `pct_black`, `pct_hispanic`, and `pct_amerindian`. Remember to assign to `df_race`.
+    - Create a 0/1 indicator called `gt50pct_bl_hisp_nat` for whether more than 50% of students identify as black, latinx, or native american and generate a frequency table for the values of `gt50pct_bl_hisp_nat`
+
+
+```{r}
+df_race <- select(df_school_all, name, pct_black, pct_hispanic, pct_amerindian) 
+
+#lines 155 - 162 were written to verify that the total na count is actually 0. 
+
+df_race %>% filter(is.na(pct_black)) %>%
+  count()
+
+df_race %>% filter(is.na(pct_hispanic)) %>%
+  count()
+
+df_race %>% filter(is.na(pct_amerindian)) %>%
+  count()
+
+df_race %>% filter(is.na(pct_black) | is.na(pct_hispanic) | is.na(pct_amerindian)) %>%
+  count()
+
+df_race <- mutate(df_race, pct_bl_hisp_nat = pct_black + pct_hispanic + pct_amerindian)
+
+df_race <- mutate(df_race, gt50pct_bl_hisp_nat = if_else(pct_bl_hisp_nat > 50, 1, 0)) 
+
+df_race %>% count(gt50pct_bl_hisp_nat)
+
+```
+
+
+3. Complete the following steps to create an analysis variable using `mutate()` and `case_when()`:
+
+    - First, use `select()` to select the variables `name` and `state_code` from `df_school_all`, and assign the resulting dataframe to `df_schools`
+    - Use `case_when()` to create a new variable in `df_schools` called `region` whose values are:
+      - `Northeast`, if `state_code` is in: `'CT', 'ME', 'MA', 'NH', 'RI', 'VT', 'NJ', 'NY', 'PA'`
+      - `Midwest`, if `state_code` is in: `'IN', 'IL', 'MI', 'OH', 'WI', 'IA', 'KS', 'MN', 'MO', 'NE', 'ND', 'SD'`
+      - `West`, if `state_code` is in: `'AZ', 'CO', 'ID', 'NM', 'MT', 'UT', 'NV', 'WY', 'AK', 'CA', 'HI', 'OR', 'WA'`
+      - `South`, if `state_code` is not any of the above states (Hint: Use `TRUE` as the condition to specify default value. You can see an example [here](https://dplyr.tidyverse.org/reference/case_when.html).)
+    
+```{r}
+df_schools <- select(df_school_all, name, state_code)
+
+df_schools <- mutate(df_schools, region = case_when(
+  state_code %in% c("CT", "ME", "MA", "NH", "RI", "VT", "NJ", "NY", "PA") ~ "Northeast",
+  state_code %in% c("IN", "IL", "MI", "OH", "WI", "IA", "KA", "MN", "MO", "NE", "ND", "SD") ~ "Midwest",
+  state_code %in% c("AZ", "CO", "ID", "NM", "MT", "UT", "NV", "WY", "AK", "CA", "HI", "OR", "WA") ~ "West",
+  .default = "South"))
+    
+head(df_schools, n = 10) 
+tail(df_schools, n = 10)
+```
+
+4. Complete the following steps to recode variables using `mutate()` and `recode()`:
+
+    - In the `df_schools` dataframe, replace the values of the `region` variable as follows:
+      - Change `Northeast` to `NE`
+      - Change `Midwest` to `MW`
+      - Change `West` to `W`
+      - Change `South` to `S`
+    - In the `df_schools` dataframe, create a new variable `state_name` whose value is:
+      - `California`, if `state_code` is `CA`
+      - `New York`, if `state_code` is `NY`
+      - Choose another state of your choice to recode
+      - `Other`, if `state_code` is any other state (Hint: Use `.default` to specify the default value)
+    
+```{r}
+names(df_schools)
+
+df_schools <- mutate(df_schools, region = recode(region,
+  "Northeast" = "NE",
+  "Midwest" = "MW",
+  "West" = "W",
+  "South" = "S"))
+
+head(df_schools)
+
+df_schools <- mutate(df_schools, state_name = recode(state_code,
+  "CA" = "California",
+  "NY" = "New York",
+  "TN" = "Tennessee",
+  .default = "Other"))
+
+head(df_schools)
+```
+
+# Create a GitHub issue   
+
+
+- Go to the [class repository](https://github.com/anyone-can-cook/rclass1_student_issues_f23/issues) and create a new issue.
+
+- Refer to [rclass1 student issues readme](https://github.com/anyone-can-cook/rclass1_student_issues_f23/blob/main/README.md) for instructions on how to post questions or reflections.
+
+- You are also required to respond to at least one issue posted by another student.
+
+- Paste the url to your issue here: https://github.com/anyone-can-cook/rclass1_student_issues_f23/issues/432 
+- Paste the url to the issue you responded to here: https://github.com/anyone-can-cook/rclass1_student_issues_f23/issues/522 
+
+# Knit to pdf and submit problem set  
+
+**Knit to pdf** by clicking the "Knit" button near the top of your RStudio window (icon with blue yarn ball) or drop down and select "Knit to PDF"
+
+- Go to the [class website](https://anyone-can-cook.github.io/rclass1/) and under the "Readings & Assignments" >> "Week 4" tab, click on the "Problem set 4 submission link"  
+- Submit both .Rmd and pdf files  
+- Use this naming convention "lastname_firstname_ps#" for your .Rmd and pdf files (e.g. jaquette_ozan_ps4.Rmd & jaquette_ozan_ps4.pdf)  
+

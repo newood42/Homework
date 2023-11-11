@@ -1,0 +1,285 @@
+---
+title: "Problem Set #6"
+author: "Nicole Wood (in group NJ with Jade Levandofsky and Jessika Viveros)"
+date: "November 3, 2023"
+urlcolor: blue
+output: 
+  pdf_document: default
+---
+
+
+# Overview:  
+
+In this problem set, you will be using the **stringr** package (part of tidyverse) to work with strings, and the **lubridate** package for working with dates and times. We will ask you to load Twitter data that is saved as an .Rdata file.  
+
+
+# Question 1: Working with strings
+
+
+1. Load the following packages in the code chunk below: `tidyverse` and `lubridate`.
+
+```{r, message=F}
+library(tidyverse)
+library(lubridate)
+```
+
+
+2. Using `str_c()` and the following objects as input, create the string: `"Roses are red, Violets are blue"`  
+
+    - We encourage you to first sketch out what you want to do on some scratch paper.
+    - Recall from the lecture example on "Using str_c() on vectors of different lengths", when multiple vectors of different length are provided in the str_c() function, the elements of shorter vectors are recycled. See below.
+    
+```{r eval=FALSE}
+str_c("@", c("ozanj ", "joebruin ", "josiebruin "), sep = "", collapse = ",")
+
+#[1] "@ozanj ,@joebruin ,@josiebruin "
+```
+    
+    - Now try it yourself.
+```{r}
+vec_1 <- c("Roses", "Violets")
+vec_2 <- c("red", "blue")
+
+str_1 <- "are"
+
+# Write your code here
+str_c(vec_1, str_1, vec_2, sep = " ", collapse = ", ")
+print(str_c)
+```
+
+
+3. [Pig Latin](https://en.wikipedia.org/wiki/Pig_Latin) is a language game in which the first consonant of each word is moved to the end of the word, then `"ay"` is appended to create a suffix. For example, the word `"Wikipedia"` would become `"Ikipediaway"`.
+
+    - Using `str_c()` and `str_sub()`, turn the given `pig_latin` vector into the string: `"igpay atinlay"`
+    - We encourage you to first sketch out what you want to do on some scratch paper.
+        - First, think about what the final outcome will look like.
+        - Then, think about how you can get there. Play around with the `str_sub()` function. What happens when you include different values in the `str_sub()` function?  
+    - this is low-key the trickiest question in the problem set. So if you get stuck, ask a question to your group or github and move on. and come back to it later.
+
+```{r}
+pig_latin <- c('pig', 'latin')
+
+# Write your code here
+
+pl1 <- str_sub(pig_latin, start = 2, end = -1)
+pl2 <- str_sub(pig_latin, start = 1, end = 1)
+
+str_c(pl1, pl2, "ay", sep = "", collapse = " ")
+```
+
+
+4. Using `str_c()` and `str_sub()`, decode the given `secret_message`. Your output should be a string.  
+
+    - Follow the same logic from above.
+    - Sketch out what you want to do on some scratch paper. Break it down step by step. Play around with different values for the `str_sub()` function. 
+    
+```{r}
+secret_message <- c('ollowfay', 'ouryay', 'earthay')
+
+# Write your code here
+
+sm1 <- str_sub(secret_message, start = -3, end = -3)
+sm2 <- str_sub(secret_message, start = 1, end = -4)
+
+str_c(sm1, sm2, sep = "", collapse = " ")
+
+str_c
+```
+
+
+# Question 2: Working with Twitter data  
+
+
+1. You will be using Twitter data we fetched from the following Twitter handles: `UniNoticias`, `FoxNews`, and `CNN`.  
+
+    - This data has been saved as an Rdata file.
+    - Use the `load()` and `url()` functions to download the `news_df` dataframe from the url: `https://github.com/anyone-can-cook/rclass1/raw/master/data/twitter/twitter_news.RData`
+    - Report the dimensions of the `news_df` data frame (rows and columns). Use the `dim()` function.  
+
+
+```{r}
+load(url("https://github.com/anyone-can-cook/rclass1/raw/master/data/twitter/twitter_news.RData"))
+
+dim(news_df)
+```
+
+
+2. Subset your dataframe `news_df` and create a new dataframe called `news_df2` keeping only the following variables: `user_id`, `status_id`, `created_at`, `screen_name`, `text`, `followers_count`, `profile_expanded_url`.  
+
+    - Note in the following questions we will ask you to create a new column and that means you have to assign `<-` the new changes you are making to the existing dataframe `news_df2`. Ex. `news_df2 <- news_df %>% mutate(newvar = mean(oldvar))`
+
+```{r}
+news_df2 <- news_df %>%
+  select(user_id, status_id, created_at, screen_name, text, followers_count, profile_expanded_url)
+
+names(news_df2)
+```
+
+
+3. Create a new column in `news_df2` called `text_len` that contains the length of the character variable `text`.
+
+    - What is the `class` and `type` of this new column? Make sure to include your code in the code chunk below.
+      - __ANSWER__: The class and type of text_len are both integer. 
+    
+```{r}
+news_df2 <- news_df2 %>%
+  mutate(text_len = str_length(text))
+
+head(news_df2)
+class(news_df2$text_len)
+typeof(news_df2$text_len)
+```
+
+
+4. Create an additional column in `news_df2` called `handle_followers` that stores the twitter handle and the number of followers associated with that twitter handle in a string. For example, the entries in the `handle_followers` column should look like this: `@[twitter_handle] has [number] followers.`
+
+    - What is the `class` and `type` of this new column? Make sure to include your code in the code chunk below.
+      - __ANSWER__: The class and type of handle_followers in character. 
+
+```{r}
+news_df2 <- news_df2 %>%
+  mutate(handle_followers = str_c("@", screen_name, " has ", followers_count, " followers."))
+
+head(news_df2)
+class(news_df2$handle_followers)
+typeof(news_df2$handle_followers)
+```
+
+
+5. Lastly, create a column in `news_df2` called `short_web` that contains a short version of the `profile_expanded_url` without the `http://www.` part of the url. For example, the entries in that column should look something like this: `nytimes.com`.
+
+```{r}
+news_df2 <- news_df2 %>%
+  mutate(short_web = str_sub(profile_expanded_url, start = 12, end = -1))
+
+head(news_df2)
+tail(news_df2)
+```
+
+# Question 3: Working with dates/times
+
+
+1. Using the column `created_at`, create a new column in `news_df2` called `dt_chr` that is a character version of `created_at`.
+
+    - What is the `class` of the `created_at` and `dt_chr` columns? Make sure to include your code in the code chunk below.
+      - __ANSWER__: The class of the created_at column is POSIXct and POSIXt. The class of the dt_chr column is character. 
+
+```{r}
+news_df2 <- news_df2 %>%
+  mutate(dt_chr = as.character(created_at))
+
+head(news_df2)
+class(news_df2$created_at)
+class(news_df2$dt_chr)
+```
+
+
+2. Create another column in `news_df2` called `dt_len` that stores the length of `dt_chr`.
+
+```{r}
+news_df2 <- news_df2 %>%
+  mutate(dt_len = str_length(dt_chr))
+
+head(news_df2)
+```
+
+
+3. Next, create additional columns in `news_df2` for each of the following date/time components:
+
+    a. Create a new column `date_chr` for date (e.g. `2020-03-26`) using the column `dt_chr` and the `str_sub()` function.
+    a. Do the same for year `yr_chr` (e.g. `2020`).
+    a. Do the same for month `mth_chr` (e.g. `03`).
+    a. Do the same for day `day_chr` (e.g. `26`).
+    a. Do the same for time `time_chr` (e.g. `22:41:09`).  
+
+```{r}
+news_df2 <- news_df2 %>%
+  mutate(date_chr = str_sub(dt_chr, start = 1, end = 10),
+         yr_chr = str_sub(dt_chr, start = 1, end = 4),
+         mth_chr = str_sub(dt_chr, start = 6, end = 7),
+         day_chr = str_sub(dt_chr, start = 9, end = 10),
+         time_chr = str_sub(dt_chr, start = 12, end = -1))
+
+head(news_df2)
+
+```
+
+
+4. Using the column we created in the previous question `time_chr`, create additional columns in `news_df2` for the following time components: 
+
+    a. Create a new column `hr_chr` for hour (e.g. `22`) using the column `time_chr` and the `str_sub()` function.
+    a. Do the same for minutes `min_chr` (e.g. `41`).
+    a. Do the same for seconds `sec_chr` (e.g. `09`).
+
+```{r}
+news_df2 <- news_df2 %>%
+  mutate(hr_chr = str_sub(time_chr, start = 1, end = 2),
+         min_chr = str_sub(time_chr, start = 4, end = 5),
+         sec_chr = str_sub(time_chr, start = -2, end = -1))
+
+head(news_df2)
+```
+
+
+
+5. Now let's get some practice with the `lubridate` package.  
+
+    a. Using the `year()` function from the `lubridate` package, create a new column in `news_df2` called `yr_num` that contains the year (e.g. `2020`) extracted from `date_chr`.
+    a. Do the same for month `mth_num`.
+    a. Do the same for day `day_num`.
+    a. Do the same for hour `hr_num`, but extract from `created_at` column instead of `date_chr`.
+    a. Do the same for minutes `min_num`. 
+    a. Do the same for seconds `sec_num`.
+
+```{r}
+news_df2 <- news_df2 %>%
+  mutate(yr_num = year(date_chr),
+         mth_num = month(date_chr),
+         day_num = day(date_chr),
+         hr_num = hour(created_at),
+         min_num = minute(created_at),
+         sec_num = second(created_at))
+
+head(news_df2)
+```
+
+
+
+6. Using the **new numeric columns** (e.g. day_num, mth_num) you've created in the previous step, reconstruct the date and datetime columns. Namely, add the following columns to `news_df2`:
+
+    a. Use `make_date()` to create new column called `my_date` that contains the date (year, month, day).
+    a. Use `make_datetime()` to create new column called `my_datetime` that contains the datetime (year, month, day, hour, minutes, seconds).
+    
+    - What is the `class` of your `my_date` and `my_datetime` columns? Make sure to include your code in the code chunk below.
+      - __ANSWER__: 
+
+```{r}
+news_df2 <- news_df2 %>%
+  mutate(my_date = make_date(year = yr_chr, month = mth_chr, day = day_chr),
+         my_datetime = make_datetime(yr_num, mth_num, day_num, hr_num, min_num, sec_num))
+
+head(news_df2)
+```
+
+
+# Create a GitHub issue   
+
+- Go to the [class repository](https://github.com/anyone-can-cook/rclass1_student_issues_f23/issues) and create a new issue.
+
+- Refer to [rclass1 student issues readme](https://github.com/anyone-can-cook/rclass1_student_issues_f23/blob/main/README.md) for instructions on how to post questions or reflections.
+
+- You are also required to respond to at least one issue posted by another student.
+
+
+- Paste the url to your issue here: https://github.com/anyone-can-cook/rclass1_student_issues_f23/issues/723 
+- Paste the url to the issue you responded to here: https://github.com/anyone-can-cook/rclass1_student_issues_f23/issues/722 
+
+
+# Knit to pdf and submit problem set  
+
+**Knit to pdf** by clicking the "Knit" button near the top of your RStudio window (icon with blue yarn ball) or drop down and select "Knit to PDF"
+
+- Go to the [class website](https://anyone-can-cook.github.io/rclass1/) and under the "Readings & Assignments" >> "Week 6" tab, click on the "Problem set 6 submission link"  
+- Submit both .Rmd and pdf files  
+- Use this naming convention "lastname_firstname_ps#" for your .Rmd and pdf files (e.g. jaquette_ozan_ps6.Rmd & jaquette_ozan_ps6.pdf)
+

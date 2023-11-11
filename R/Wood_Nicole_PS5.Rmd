@@ -1,0 +1,426 @@
+---
+title: "Problem Set #5"
+author: "Nicole Wood (in group NJ with Jade Levandofsky and Jessika Viveros)"
+date: "October 28, 2023"
+urlcolor: blue
+output: 
+  pdf_document:
+    df_print: default
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>", highlight = TRUE)
+```
+
+
+# Overview
+
+## Data
+
+Colleges and universities purchase data on prospective students from vendors like the College Board in order to identify and recruit students to their institution. In this problem set, we will be working with the student list data that University of Illinois-Chicago purchased from College Board. Specifically, we will use the list from one specific order, where UI-Chicago filtered for all prospects who identified as American Indian or Alaska Native and scored within a specified test score/GPA range. [Here](https://anyone-can-cook.github.io/rclass1/data/prospect_list/uic_order_487927.pdf) is the order summary file containing the detailed search criteria.
+
+To this student list data, we have also merged in Census data on zip-code characteristics and NCES data on high school characteristics for each prospect. Thus, some variables in the data are prospect-level variables, while others are measured at the zip-code level or school level. These include characteristics for the zip code the prospect lives in and characteristics for the high school which the prospect attends -- those variables do not vary across prospects within the same zip-code or school.
+
+## Task
+
+In this task, we are analyzing the characteristics of prospective students who identified as American Indian or Alaska Native when they took the SAT test. We analyze the ethnicity categories and race categories these students selected, where these students live, and their intended major. With respect to course learning goals, these analyses will help you practice processing across observations. From a substantive perspective, quantitative analyses seldom focus on students who identify as American Indian or Alaska Native, so the UI-Chicago student list purchase offers an opportunity to learn a little more about these students.
+
+A note on terms for race and ethnicity categories: This problem set uses categories adopted by the U.S. Census. For example, the problem set uses "American Indian or Alaska Native" rather than the terms "Native American" or "Indigenous" and use the term "Hispanic" rather than "Latinx."
+
+
+# Part I: Loading library and data
+
+1. Load the `tidyverse` library.
+
+```{r}
+library(tidyverse)
+```
+
+2. Use `load()` and `url()` to load the `list_native_df` dataframe from `https://github.com/anyone-can-cook/rclass1/raw/master/data/prospect_list/list_native_df.RData`.
+
+```{r}
+load(url("https://github.com/anyone-can-cook/rclass1/raw/master/data/prospect_list/list_native_df.RData"))
+```
+
+3. Let's investigate the `list_native_df` dataframe. First, use `head()` and `glimpse()` to preview the data.
+
+```{r}
+head(list_native_df)
+glimpse(list_native_df)
+```
+
+4. For each of the following **ethnicity** variables, use the `count()` function to count its unique values:
+
+    - `stu_cuban`
+    - `stu_mexican`
+    - `stu_puerto_rican`
+    - `stu_other_hispanic`
+    - `stu_non_hispanic`
+    - `stu_ethnicity_no_response`
+
+```{r}
+list_native_df %>% count(stu_cuban)
+list_native_df %>% count(stu_mexican)
+list_native_df %>% count(stu_puerto_rican)
+list_native_df %>% count(stu_other_hispanic)
+list_native_df %>% count(stu_non_hispanic)
+list_native_df %>% count(stu_ethnicity_no_response)
+```
+
+5. For each of the following **race** variables, use the `count()` function to count its unique values:
+
+    - `stu_american_indian`
+    - `stu_asian`
+    - `stu_black`
+    - `stu_native_hawaiian`
+    - `stu_white`
+    - `stu_race_no_response`
+
+```{r}
+list_native_df %>% count(stu_american_indian)
+list_native_df %>% count(stu_asian)
+list_native_df %>% count(stu_black)
+list_native_df %>% count(stu_native_hawaiian)
+list_native_df %>% count(stu_white)
+list_native_df %>% count(stu_race_no_response)
+```
+
+
+# Part II: Recreating College Board's aggregate race/ethnicity variable
+
+In the [questionnaire](https://collegereadiness.collegeboard.org/pdf/sat-registration-booklet-students.pdf#page=27) that students fill out during the College Board exams, they are allowed to select multiple ethnicity and race categories that they identify as. For example, a student who checks the box for "Cuban" could also check the box for "Non-hispanic." Similarly, a student who checks the box for "American Indian or Alaska Native" could also check the box for "Black." [Here](https://research.collegeboard.org/about-us/changes-to-race-ethnicity-reporting) are more details on how College Board defines their race and ethnicity data.
+
+These College Board variables are based off of the U.S. Census variables, as defined [here](https://www.census.gov/topics/population/race/about.html). The specific Census variables we use in our dataset can be found [here](https://www.socialexplorer.com/data/ACS2019_5yr/metadata/?ds=ACS19_5yr&table=B03002).
+
+College Board also reports the student's aggregate race/ethnicity per U.S. Department of Education reporting guidelines, as defined [here](https://anyone-can-cook.github.io/rclass1/data/prospect_list/cb_race_ethnicity_fields.pdf) (see last page). This derived category allocates each student into 1 category. Below, we will recreate this College Board variable (`race_cb`).
+
+To do that, we will first create 0/1 indicators for each disaggregated race and ethnicity variables. For example, we will create the 0/1 indicator variable `stu_hispanic_01`, whose value will be `1` if the student identifies as hispanic and `0` otherwise. Then, these 0/1 indicators, along with a couple other variables we create, will be used as input to recreate the `race_cb` variable.
+
+Run the following code to create the new race/ethnicity categories. All code is provided for you, all you need to do is run the code chunk below. Make sure to remove the `eval = F` from the code chunk when you are ready to run this part.
+
+```{r}
+list_native_df <- list_native_df %>% mutate(
+  # create 0/1 variable for identifies as hispanic
+  stu_hispanic_01 = case_when(
+    (stu_cuban == 'Y' | stu_mexican == 'Y' | stu_puerto_rican == 'Y' | stu_other_hispanic == 'Y') ~ 1,
+    (stu_non_hispanic == 'Y' & is.na(stu_cuban) & is.na(stu_mexican) & is.na(stu_puerto_rican) & is.na(stu_other_hispanic)) ~ 0,
+  ),
+  # create 0/1 variables for each ethnicity group
+  stu_cuban_01 = case_when(stu_cuban == 'Y' ~ 1,is.na(stu_cuban) & is.na(stu_ethnicity_no_response) ~ 0),
+  stu_mexican_01 = case_when(stu_mexican == 'Y' ~ 1,is.na(stu_mexican) & is.na(stu_ethnicity_no_response) ~ 0),
+  stu_puerto_rican_01 = case_when(stu_puerto_rican == 'Y' ~ 1,is.na(stu_puerto_rican) & is.na(stu_ethnicity_no_response) ~ 0),
+  stu_other_hispanic_01 = case_when(stu_other_hispanic == 'Y' ~ 1,is.na(stu_other_hispanic) & is.na(stu_ethnicity_no_response) ~ 0),
+  # create 0/1 variables for each race group
+  stu_american_indian_01 = case_when(stu_american_indian == 'Y' ~ 1,is.na(stu_american_indian) & is.na(stu_race_no_response) ~ 0),
+  stu_asian_01 = case_when(stu_asian == 'Y' ~ 1,is.na(stu_asian) & is.na(stu_race_no_response) ~ 0),
+  stu_black_01 = case_when(stu_black == 'Y' ~ 1,is.na(stu_black) & is.na(stu_race_no_response) ~ 0),
+  stu_native_hawaiian_01 = case_when(stu_native_hawaiian == 'Y' ~ 1,is.na(stu_native_hawaiian) & is.na(stu_race_no_response) ~ 0),
+  stu_white_01 = case_when(stu_white == 'Y' ~ 1,is.na(stu_white) & is.na(stu_race_no_response) ~ 0),
+  # create count of number of race groups
+  race_ct = rowSums(dplyr::across(c(stu_american_indian_01,stu_asian_01,stu_black_01,stu_native_hawaiian_01,stu_white_01)), na.rm = TRUE),
+  # create 0/1 measure of multi-race
+  multi_race_01 = if_else(race_ct >=2,1,0, missing = NULL),
+  # create college board categorical ethnicity race variable
+  race_cb = case_when(
+    # 0    No Response
+    (is.na(stu_hispanic_01)==1 | (stu_hispanic_01==0 & stu_race_no_response=='Y')) ~ 'no_response',
+    # 1    American Indian/Alaska Native
+    (stu_american_indian_01==1 & multi_race_01 == 0 & stu_hispanic_01 == 0) ~ 'ai_an',
+    # 2    Asian
+    (stu_asian_01==1 & multi_race_01 == 0 & stu_hispanic_01 == 0) ~ 'asian',
+    # 3    Black/African American
+    (stu_black_01==1 & multi_race_01 == 0 & stu_hispanic_01 == 0) ~ 'black',
+    # 4    Hispanic/Latino
+    (stu_hispanic_01==1) ~ 'hispanic',
+    # 8    Native Hawaiian or Other Pacific Islander
+    (stu_native_hawaiian_01==1 & multi_race_01 == 0 & stu_hispanic_01 == 0) ~ 'nh_pi',
+    # 9    White
+    (stu_white_01==1 & multi_race_01 == 0 & stu_hispanic_01 == 0) ~ 'white',
+    # 12   Two Or More Races, Non-Hispanic
+    (multi_race_01 == 1 & stu_hispanic_01 == 0) ~ 'multi_race'
+  )
+) %>%
+  # drop input ethnicity/race vars
+  select(-stu_cuban,-stu_mexican,-stu_puerto_rican,-stu_other_hispanic,-stu_non_hispanic,-stu_american_indian,-stu_asian,-stu_black,-stu_native_hawaiian,-stu_white,-stu_ethnicity_no_response,-stu_race_no_response)
+```
+
+1. After adding the new variables, let's investigate the `list_native_df` dataframe again. Use `head()` and `glimpse()` to preview the data.
+
+```{r}
+head(list_native_df)
+glimpse(list_native_df)
+
+```
+
+2. Now, let's take a look at the derived aggregate race/ethnicity variable `race_cb` we created. Create a new object `race_cb_freq` that stores the count for each race/ethnicity category as follows:
+
+    - Use `count()` to get the count for each `race_cb` category
+    - Use `arrange()` to sort by the count in descending order
+
+```{r}
+race_cb_freq <- list_native_df %>% count(race_cb) %>% arrange(desc(n))
+head(race_cb_freq)
+
+```
+
+3. Investigate the `race_cb_freq` object you created in the previous question by using the `typeof()` and `str()` functions. Run your code in the code chunk below and answer the following questions:
+
+    - What type of object is this, and how many elements does it have?
+      - **ANSWER**: Race_cb_freq is a list. There are 2 elements: race_cb and n. 
+    - Is this object a dataframe? If so, how many observations does it have, and what are the names of the variables?
+      - **ANSWER**: Race_cb_freq is a dataframe, as it is a list in which each element is named. It has 9 observations; the variables are named race_cb and n. 
+
+```{r}
+typeof(race_cb_freq)
+str(race_cb_freq)
+```
+
+4. Now, using `race_cb_freq`, add a column for the percentage of students in each `race_cb` category. Use `mutate()` to create a new variable that is the percent of students in each category. (Hint: Calculate the percent by dividing the count by the sum of all counts, then multiplying by 100)
+
+```{r}
+race_cb_freq <- mutate(race_cb_freq, percent_stud = (n/sum(n)) * 100)
+head(race_cb_freq)
+```
+
+
+# Part III: Summarizing across rows
+
+1. Now, let's investigate the 0/1 indicator variables we created earlier for each race/ethnicity variable. First, we'll take a look at `stu_hispanic_01`. Use `summarise()` to create the following variables (Hint: Refer to the lecture to figure out which helper functions to use):
+
+    - The total number of students
+    - The total number of students where `stu_hispanic_01` is missing
+    - The percentage of students who identify as hispanic
+
+```{r}
+list_native_df %>% summarise(total_students = n(),
+                             total_missing_hisp_stu = sum(is.na(stu_hispanic_01)), perc_hisp_stu = mean(stu_hispanic_01*100, na.rm = TRUE))
+```
+
+2. Next, use `summarise()` to calculate the percentage of students who identify as each of the following category of race and ethnicity, and assign the result to an object named `race_ethnicity_pct`:
+
+    - `stu_cuban_01`
+    - `stu_mexican_01`
+    - `stu_puerto_rican_01`
+    - `stu_other_hispanic_01`
+    - `stu_hispanic_01`
+    - `stu_american_indian_01`
+    - `stu_black_01`
+    - `stu_native_hawaiian_01`
+    - `stu_white_01`
+
+    How do these percentages differ from the aggregated `race_cb` variable in which each student can only be in one group?
+    
+    - **ANSWER**:  It is difficult to compare the percentages between the race_ethnicity_pct and race_cb dataframes, as they are measuring different variables. However, the race_ethnicity_pct allows for a more nuanced understanding of the students under study. The primary difference in the dataframes in the more detailed categories for students with South and Central American heritage and the ability to assign a student to more than one category. In the race_cb dataframe, we learn that 38% of students identify as "multi_race," and in the race_ethnicity_pct dataframe, we can see evidence of what that "multi_race" composition might be. For example, in race_cb, only 0.22 % of students were classified as white. In race_ethnicity_pct, 54.37% of students were classified as white, meaning that a large number of students likely have some combination of Native American/Native Alaskan and European heritage. 
+
+```{r}
+
+race_ethnicity_pct <- list_native_df %>% summarize(perc_cuban_stu = mean(stu_cuban_01*100, na.rm = TRUE),
+   perc_mexican_stu = mean(stu_mexican_01*100, na.rm = TRUE),
+   perc_puerto_rican_stu = mean(stu_puerto_rican_01*100, na.rm = TRUE),
+   perc_other_hispanic_stu = mean(stu_other_hispanic_01*100, na.rm = TRUE),
+   perc_hispanic_stu = mean(stu_hispanic_01*100, na.rm = TRUE),
+   perc_american_indian_stu = mean(stu_american_indian_01*100, na.rm = TRUE),
+   perc_black_stu = mean(stu_black_01*100, na.rm = TRUE),
+   perc_native_hawaiian_stu = mean(stu_native_hawaiian_01*100, na.rm = TRUE),
+   perc_white_stu = mean(stu_white_01*100, na.rm = TRUE))
+
+print(race_ethnicity_pct)
+```
+
+
+3.  Investigate the `race_ethnicity_pct` object you created in the previous question by using the `typeof()` and `str()` functions. Run your code in the code chunk below and answer the following questions:
+
+    - What type of object is this, and how many elements does it have?
+      - **ANSWER**: The object type of race_ethnicity_pct is list, and it has 9 elements. 
+    - Is this object a dataframe? If so, how many observations does it have, and what are the names of the variables? 
+      - **ANSWER**: Race_ethnicity_pct is a dataframe, as it is a list in which each element is named. It has 1 observation. The variable names are perc_cuban_stu, perc_mexican_stu, perc_puerto_rican_stu, perc_other_hispanic_stu, perc_hispanic_stu, perc_american_indian_stu, per_black_stu, per_native_hawaiian_stu, and perc_white_stu. 
+      
+
+```{r}
+typeof(race_ethnicity_pct)
+str(race_ethnicity_pct)
+```
+
+
+# Part IV: Grouping and summarizing
+
+1. Now, we will use `group_by()` in conjunction with `summarise()` to calculate summary results for each group. First, group by core-based statistical area (`zip_cbsatitle`) and calculate the following statistics for each CBSA:
+
+    - The total number of students
+    - The percentage of students who identify as each of the following race/ethnicity category:
+      - `stu_cuban_01`
+      - `stu_mexican_01`
+      - `stu_puerto_rican_01`
+      - `stu_other_hispanic_01`
+      - `stu_hispanic_01`
+      - `stu_american_indian_01`
+      - `stu_black_01`
+      - `stu_native_hawaiian_01`
+      - `stu_white_01`
+      
+      Lastly, sort by the number of students per CBSA in descending order, and answer the following question. Note that a [core-based statistical area](https://en.wikipedia.org/wiki/Core-based_statistical_area) by definition only includes urban areas. Observations where `zip_cbsatitle` is `NA` indicates that the student does not live in a CBSA (i.e., rural location).
+      
+    - In one or two sentences, what is something you find interesting about these results?
+      - **ANSWER**: On the whole, the results tend to match larger trends of the US population. For example, larger percentages of Hispanic students are found in Texas and Southern California, while larger percentages of Black students are found in New York, Washington DC, and Detroit. While it's interesting that the largest percentage of Puerto Rican students live in New York, as opposed to the southwestern US, that is also in keeping with general population distributions, as Puerto Ricans represent nearly 10% of the population of New York City. 
+
+```{r}
+CBSA_desc <- list_native_df %>% 
+  group_by(zip_cbsatitle) %>% 
+  summarise(total_stu = n(),
+   perc_cuban = mean(stu_cuban_01*100, na.rm = TRUE),
+   perc_mexican = mean(stu_mexican_01*100, na.rm = TRUE),
+   perc_puerto_rican = mean(stu_puerto_rican_01*100, na.rm = TRUE),
+   perc_other_hispanic = mean(stu_other_hispanic_01*100, na.rm = TRUE),
+   perc_hispanic = mean(stu_hispanic_01*100, na.rm = TRUE),
+   perc_american_indian = mean(stu_american_indian_01*100, na.rm = TRUE),
+   perc_black = mean(stu_black_01*100, na.rm = TRUE),
+   perc_native_hawaiian = mean(stu_native_hawaiian_01*100, na.rm = TRUE),
+   perc_white = mean(stu_white_01*100, na.rm = TRUE)) %>%
+  arrange(desc(total_stu))
+
+head(CBSA_desc, n = 10)
+  
+```
+
+
+2. Next, we will look at the students' zip-code level median household income (`zip_median_household_income`) by state. Group by state (`stu_state`) and calculate the following statistics for each state:
+
+    - The total number of students
+    - The total number of students where `zip_median_household_income` is missing
+    - The average median household income of students
+    - The maximum median household income of students
+    - The minimum median household income of students
+
+    Lastly, sort by the number of students per state in descending order.
+
+```{r}
+stu_state_desc <- list_native_df %>% 
+  group_by(stu_state) %>%
+  summarise(total_stu = n(),
+            total_missing_stu = sum(is.na(zip_median_household_income)),
+            ave_median_hh_inc = mean(zip_median_household_income),
+            max_median_hh_inc = max(zip_median_household_income),
+            min_median_hh_inc = min(zip_median_household_income)) %>%
+  arrange(desc(total_stu))
+
+head(stu_state_desc)
+```
+
+3. In the next few questions, we'll take a look at the students' intended major choice. First, group by major choice (`stu_major_1_group_text`) and summarize the number of students per major. Sort by the number of students in descending order and assign the result to an object named `major_group_freq`.
+
+```{r}
+major_group_freq <- list_native_df %>% 
+  group_by(stu_major_1_group_text) %>%
+  summarise(student_major = n()) %>%
+  arrange(desc(student_major))
+
+head(major_group_freq)
+  
+```
+
+4. Using `major_group_freq`, add a column for the percentage of students in each `stu_major_1_group_text` category.
+
+```{r}
+major_group_freq <- major_group_freq %>%
+  mutate(percent_stud = student_major/sum(student_major)*100)
+
+head(major_group_freq)
+```
+```
+```
+
+5. Now, create the same table as the previous question that shows the count and percentage of students for each major choice, but instead of using `group_by()` and `summarise()`, use `count()` to get the counts from the original `list_native_df` dataframe. Make sure to sort by descending student count. (Hint: Use a similar approach you used to create the frequency count of `race_cb` in Part II)
+
+```{r}
+major_group_freq_count <- list_native_df %>%
+  count(stu_major_1_group_text, name = "student_major") %>%
+  mutate(percent_stud = (student_major/sum(student_major)*100)) %>%
+  arrange(desc(student_major))
+head(major_group_freq_count)
+
+```
+
+6. We can also group by multiple variables. In this question, group by both state (`stu_state`) and the student's intended major (`stu_major_1_group_text`), then summarize the number of students per state and major. Sort by state, then the number of students in descending order. Assign the result to an object named `major_by_state_freq`.
+
+```{r}
+major_by_state_freq <- list_native_df %>%
+  group_by(stu_state, stu_major_1_group_text) %>%
+  summarize(n_obs = n()) %>%
+  arrange(stu_state, desc(n_obs))
+
+head(major_by_state_freq)
+glimpse(major_by_state_freq)
+```
+
+7. Looking at the `major_by_state_freq` dataframe from the previous question, answer the following questions:
+
+    - How many observations are there?
+      - **ANSWER**:There are 1,006 observations (rows). 
+    - What does each observation represent?
+      - **ANSWER**:Each observation represents a group of students sharing the same major in the same state. 
+    - If we were to group/summarize by state, how many observations would the resulting object have? You will do this in the next question.
+      - **ANSWER**: Grouping/summarizing by state returns 53 observations: a grouped observation for each state, Guam, Puerto Rico, and NA values.  
+
+8. Finally, we will look at the top 3 intended major choices by students from each state. Using `major_by_state_freq`, group by state and create the following variables:
+
+    - The top choice major by students per state
+    - The second choice major by students per state
+      - Hint: Use `nth()` to get the nth value per group
+    - The third choice major by students per state
+
+```{r}
+#dataframe already arranged by n_obs in question 4.7. 
+
+major_by_state_freq_t3 <- major_by_state_freq %>%
+  group_by(stu_state) %>%
+  summarise(top_major = first(stu_major_1_group_text),
+            second_major = nth(stu_major_1_group_text, 2),
+            third_major = nth(stu_major_1_group_text, 3))
+head(major_by_state_freq_t3)
+glimpse(major_by_state_freq_t3)
+str(major_by_state_freq_t3)
+unique(major_by_state_freq_t3$stu_state)
+```
+
+
+# Part V: Bonus (up to 10% extra credit)
+
+1. Perform an analysis of your choosing. Feel free to be creative!
+
+```{r}
+gender_per_major <- list_native_df %>%
+  group_by(stu_gender, stu_major_1_group_text) %>%
+  summarise(n_obs = n()) %>%
+  arrange(stu_gender, desc(n_obs))
+
+head(gender_per_major)
+
+gender_per_major_t3 <- gender_per_major %>%
+  group_by(stu_gender) %>%
+  summarise(top_major = first(stu_major_1_group_text),
+            second_major = nth(stu_major_1_group_text, 2),
+            third_major = nth(stu_major_1_group_text, 3))
+
+head(gender_per_major_t3)
+```
+
+
+# Create a GitHub issue   
+
+- Go to the [class repository](https://github.com/anyone-can-cook/rclass1_student_issues_f23/issues) and create a new issue.
+
+- Refer to [rclass1 student issues readme](https://github.com/anyone-can-cook/rclass1_student_issues_f23/blob/main/README.md) for instructions on how to post questions or reflections.
+
+- You are also required to respond to at least one issue posted by another student.
+
+- Paste the url to your issue here: https://github.com/anyone-can-cook/rclass1_student_issues_f23/issues/574 
+- Paste the url to the issue you responded to here: https://github.com/anyone-can-cook/rclass1_student_issues_f23/issues/572 
+
+
+# Knit to pdf and submit problem set  
+
+**Knit to pdf** by clicking the "Knit" button near the top of your RStudio window (icon with blue yarn ball) or drop down and select "Knit to PDF"
+
+- Go to the [class website](https://anyone-can-cook.github.io/rclass1/) and under the "Readings & Assignments" >> "Week 5" tab, click on the "Problem set 5 submission link"  
+- Submit both .Rmd and pdf files  
+- Use this naming convention "lastname_firstname_ps#" for your .Rmd and pdf files (e.g. jaquette_ozan_ps5.Rmd & jaquette_ozan_ps5.pdf) 
